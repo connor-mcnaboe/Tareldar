@@ -1,9 +1,9 @@
+use nalgebra::Vector3;
 use std::fmt;
 use std::fmt::Formatter;
-use nalgebra::Vector3;
+use std::str::FromStr;
 
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub struct Mission {
     pub kepler_elements: KeplerElements,
     pub ode_solver: OdeSolver,
@@ -24,8 +24,7 @@ impl Default for Mission {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum OdeSolver {
     RungeKutta4,
     DormandPrince5,
@@ -42,8 +41,20 @@ impl fmt::Display for OdeSolver {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+impl FromStr for OdeSolver {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<OdeSolver, Self::Err> {
+        match input {
+            "RungeKutta4" => Ok(OdeSolver::RungeKutta4),
+            "DormandPrince5" => Ok(OdeSolver::DormandPrince5),
+            "DormandPrince853" => Ok(OdeSolver::DormandPrince853),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum CoordinateSystem {
     EarthCenteredInertial,
     EarthCenteredEarthFixed,
@@ -58,10 +69,21 @@ impl fmt::Display for CoordinateSystem {
     }
 }
 
+impl FromStr for CoordinateSystem {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<CoordinateSystem, Self::Err> {
+        match input {
+            "EarthCenteredInertial" => Ok(CoordinateSystem::EarthCenteredInertial),
+            "EarthCenteredEarthFixed" => Ok(CoordinateSystem::EarthCenteredEarthFixed),
+            _ => Err(()),
+        }
+    }
+}
+
 ///! **Kepler Elements**
 ///! Struct which defines the basic Kepler elements
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub struct KeplerElements {
     pub semi_major_axis: f64,             // in meters
     pub eccentricity: f64,                // dimensionless
@@ -181,8 +203,42 @@ mod core_tests {
     }
 
     #[test]
+    fn test_ode_solver_enum_supports_from_str() {
+        assert_eq!(
+            OdeSolver::from_str("RungeKutta4").unwrap(),
+            OdeSolver::RungeKutta4
+        );
+        assert_eq!(
+            OdeSolver::from_str("DormandPrince5").unwrap(),
+            OdeSolver::DormandPrince5
+        );
+        assert_eq!(
+            OdeSolver::from_str("DormandPrince853").unwrap(),
+            OdeSolver::DormandPrince853
+        );
+    }
+
+    #[test]
     fn test_coordinate_system_enum_supports_to_string() {
-        assert_eq!(CoordinateSystem::EarthCenteredInertial.to_string(), "EarthCenteredInertial");
-        assert_eq!(CoordinateSystem::EarthCenteredEarthFixed.to_string(), "EarthCenteredEarthFixed");
+        assert_eq!(
+            CoordinateSystem::EarthCenteredInertial.to_string(),
+            "EarthCenteredInertial"
+        );
+        assert_eq!(
+            CoordinateSystem::EarthCenteredEarthFixed.to_string(),
+            "EarthCenteredEarthFixed"
+        );
+    }
+
+    #[test]
+    fn test_coordinate_system_enum_supports_from_str() {
+        assert_eq!(
+            CoordinateSystem::from_str("EarthCenteredEarthFixed").unwrap(),
+            CoordinateSystem::EarthCenteredEarthFixed
+        );
+        assert_eq!(
+            CoordinateSystem::from_str("EarthCenteredInertial").unwrap(),
+            CoordinateSystem::EarthCenteredInertial
+        );
     }
 }
