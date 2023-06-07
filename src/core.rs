@@ -1,3 +1,5 @@
+use std::fmt;
+use std::fmt::Formatter;
 use nalgebra::Vector3;
 
 #[derive(PartialEq)]
@@ -30,11 +32,30 @@ pub enum OdeSolver {
     DormandPrince853,
 }
 
+impl fmt::Display for OdeSolver {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            OdeSolver::RungeKutta4 => write!(f, "RungeKutta4"),
+            OdeSolver::DormandPrince5 => write!(f, "DormandPrince5"),
+            OdeSolver::DormandPrince853 => write!(f, "DormandPrince853"),
+        }
+    }
+}
+
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum CoordinateSystem {
     EarthCenteredInertial,
     EarthCenteredEarthFixed,
+}
+
+impl fmt::Display for CoordinateSystem {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            CoordinateSystem::EarthCenteredInertial => write!(f, "EarthCenteredInertial"),
+            CoordinateSystem::EarthCenteredEarthFixed => write!(f, "EarthCenteredEarthFixed"),
+        }
+    }
 }
 
 ///! **Kepler Elements**
@@ -150,5 +171,18 @@ mod core_tests {
 
         assert_eq!(position, Vector3::new(6299.999999999999, 0.0, 0.0));
         assert_eq!(velocity, Vector3::new(0.0, 263812.24864760914, 0.0));
+    }
+
+    #[test]
+    fn test_ode_solver_enum_supports_to_string() {
+        assert_eq!(OdeSolver::RungeKutta4.to_string(), "RungeKutta4");
+        assert_eq!(OdeSolver::DormandPrince5.to_string(), "DormandPrince5");
+        assert_eq!(OdeSolver::DormandPrince853.to_string(), "DormandPrince853")
+    }
+
+    #[test]
+    fn test_coordinate_system_enum_supports_to_string() {
+        assert_eq!(CoordinateSystem::EarthCenteredInertial.to_string(), "EarthCenteredInertial");
+        assert_eq!(CoordinateSystem::EarthCenteredEarthFixed.to_string(), "EarthCenteredEarthFixed");
     }
 }
