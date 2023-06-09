@@ -38,7 +38,7 @@ impl FromStr for CentralBody {
 }
 
 #[cfg(test)]
-mod core_tests {
+mod bodies_tests {
     use super::*;
 
     #[test]

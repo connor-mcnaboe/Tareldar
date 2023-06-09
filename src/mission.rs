@@ -18,7 +18,7 @@ impl Default for Mission {
 }
 
 #[cfg(test)]
-mod core_tests {
+mod mission_tests {
     use super::*;
     use crate::bodies::CentralBody;
     use crate::orbit::{CoordinateSystem, KeplerElements};

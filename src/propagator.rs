@@ -96,7 +96,7 @@ pub fn propagate(mission: Mission) -> Vec<Vector6<f64>> {
 }
 
 #[cfg(test)]
-mod tests {
+mod propagator_tests {
     use super::*;
     use crate::bodies::CentralBody;
     use crate::orbit::{CoordinateSystem, KeplerElements};

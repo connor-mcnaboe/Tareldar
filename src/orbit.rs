@@ -127,7 +127,7 @@ impl KeplerElements {
 }
 
 #[cfg(test)]
-mod core_tests {
+mod orbit_tests {
     use super::*;
     use std::f64::consts::PI;
 
