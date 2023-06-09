@@ -1,55 +1,25 @@
+use crate::bodies::CentralBody;
+use crate::propagator::OdeSolver;
 use nalgebra::Vector3;
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
 #[derive(PartialEq, Debug)]
-pub struct Mission {
+pub struct Orbit {
     pub kepler_elements: KeplerElements,
-    pub ode_solver: OdeSolver,
-    pub epoch: f64,
+    pub central_body: CentralBody,
     pub coordinate_system: CoordinateSystem,
+    pub ode_solver: OdeSolver,
 }
 
-impl Default for Mission {
+impl Default for Orbit {
     fn default() -> Self {
-        Mission {
-            kepler_elements: KeplerElements {
-                ..Default::default()
-            },
-            ode_solver: OdeSolver::RungeKutta4,
-            epoch: 0.0,
+        Orbit {
+            kepler_elements: KeplerElements::default(),
+            central_body: CentralBody::EARTH,
             coordinate_system: CoordinateSystem::EarthCenteredInertial,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum OdeSolver {
-    RungeKutta4,
-    DormandPrince5,
-    DormandPrince853,
-}
-
-impl fmt::Display for OdeSolver {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            OdeSolver::RungeKutta4 => write!(f, "RungeKutta4"),
-            OdeSolver::DormandPrince5 => write!(f, "DormandPrince5"),
-            OdeSolver::DormandPrince853 => write!(f, "DormandPrince853"),
-        }
-    }
-}
-
-impl FromStr for OdeSolver {
-    type Err = ();
-
-    fn from_str(input: &str) -> Result<OdeSolver, Self::Err> {
-        match input {
-            "RungeKutta4" => Ok(OdeSolver::RungeKutta4),
-            "DormandPrince5" => Ok(OdeSolver::DormandPrince5),
-            "DormandPrince853" => Ok(OdeSolver::DormandPrince853),
-            _ => Err(()),
+            ode_solver: OdeSolver::RungeKutta4,
         }
     }
 }
@@ -118,15 +88,15 @@ impl KeplerElements {
         // Calculate the position and velocity in the Cartesian coordinate system
         let arg_of_lat = self.argument_of_periapsis + self.true_anomaly;
         let position = Vector3::new(
-            r * (self.longitude_of_ascending_node.cos() * (arg_of_lat).cos()
-                - self.longitude_of_ascending_node.sin()
-                    * (arg_of_lat).sin()
-                    * self.inclination.cos()),
-            r * (self.longitude_of_ascending_node.sin() * (arg_of_lat).cos()
-                + self.longitude_of_ascending_node.sin()
-                    * (arg_of_lat).sin()
-                    * self.inclination.cos()),
-            r * (self.argument_of_periapsis.cos() * self.inclination.sin()),
+            r * ((arg_of_lat).cos() * self.longitude_of_ascending_node.cos()
+                - (arg_of_lat).sin()
+                    * self.inclination.cos()
+                    * self.longitude_of_ascending_node.sin()),
+            r * ((arg_of_lat).cos() * self.longitude_of_ascending_node.sin()
+                + (arg_of_lat).sin()
+                    * self.inclination.cos()
+                    * self.longitude_of_ascending_node.cos()),
+            r * ((arg_of_lat).sin() * self.inclination.sin()),
         );
 
         // Calculate the specific angular momentum vector
@@ -159,6 +129,26 @@ impl KeplerElements {
 #[cfg(test)]
 mod core_tests {
     use super::*;
+    use std::f64::consts::PI;
+
+    #[test]
+    fn test_orbit_sets_default() {
+        let expected_elements = Orbit {
+            kepler_elements: KeplerElements {
+                semi_major_axis: 1000.0,
+                eccentricity: 0.0,
+                inclination: 0.0,
+                longitude_of_ascending_node: 0.0,
+                argument_of_periapsis: 0.0,
+                true_anomaly: 0.0,
+            },
+            central_body: CentralBody::EARTH,
+            coordinate_system: CoordinateSystem::EarthCenteredInertial,
+            ode_solver: OdeSolver::RungeKutta4,
+        };
+        let actual_elements = Orbit::default();
+        assert_eq!(actual_elements, expected_elements)
+    }
 
     #[test]
     fn test_kepler_elements_sets_default() {
@@ -178,44 +168,47 @@ mod core_tests {
 
     #[test]
     fn test_kepler_elements_to_state_vector() {
+        let eps_pos = 0.5;
+        let eps_vel = 0.5;
         let kepler_elements = KeplerElements {
-            semi_major_axis: 7000.0,
-            eccentricity: 0.1,
-            inclination: 0.0,
-            longitude_of_ascending_node: 0.0,
-            argument_of_periapsis: 0.0,
-            true_anomaly: 0.0,
+            semi_major_axis: 6.791301224674748E+06,
+            eccentricity: 8.510618198049622E-04,
+            inclination: 4.949314343620572E+01 * PI / 180.0,
+            longitude_of_ascending_node: 9.440099680297747E+01 * PI / 180.0,
+            argument_of_periapsis: 8.122131421322101E+01 * PI / 180.0,
+            true_anomaly: 3.244321752988205E+02 * PI / 180.0,
         };
+
+        let expected_position = Vector3::new(
+            -3.507115480698001E+06,
+            4.487914768092333E+06,
+            3.690078020656149E+06
+        );
+
+        let expected_velocity =  Vector3::new(
+            -3.047824659988581E+03,
+            -5.735901699645484E+03,
+            4.072387230323159E+03
+        );
 
         let mu = 398600.4418e9;
 
         let (position, velocity) = kepler_elements.to_state_vector(mu);
 
-        assert_eq!(position, Vector3::new(6299.999999999999, 0.0, 0.0));
-        assert_eq!(velocity, Vector3::new(0.0, 263812.24864760914, 0.0));
+        // Position Vectors
+        assert_relatively_eq(position[0], expected_position[0], eps_pos);
+        assert_relatively_eq(position[1], expected_position[1], eps_pos);
+        assert_relatively_eq(position[2], expected_position[2], eps_pos);
+
+        // Velocity Vectors
+        assert_relatively_eq(velocity[0], expected_velocity[0], eps_vel);
+        assert_relatively_eq(velocity[1], expected_velocity[1], eps_vel);
+        assert_relatively_eq(velocity[2], expected_velocity[2], eps_vel);
     }
 
-    #[test]
-    fn test_ode_solver_enum_supports_to_string() {
-        assert_eq!(OdeSolver::RungeKutta4.to_string(), "RungeKutta4");
-        assert_eq!(OdeSolver::DormandPrince5.to_string(), "DormandPrince5");
-        assert_eq!(OdeSolver::DormandPrince853.to_string(), "DormandPrince853")
-    }
-
-    #[test]
-    fn test_ode_solver_enum_supports_from_str() {
-        assert_eq!(
-            OdeSolver::from_str("RungeKutta4").unwrap(),
-            OdeSolver::RungeKutta4
-        );
-        assert_eq!(
-            OdeSolver::from_str("DormandPrince5").unwrap(),
-            OdeSolver::DormandPrince5
-        );
-        assert_eq!(
-            OdeSolver::from_str("DormandPrince853").unwrap(),
-            OdeSolver::DormandPrince853
-        );
+    fn assert_relatively_eq(num_one: f64, num_two: f64, epsilon: f64) {
+        let diff = (num_two - num_one).abs();
+        assert!(diff <= epsilon);
     }
 
     #[test]
